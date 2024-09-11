@@ -35,6 +35,19 @@ function isAuthenticated(req, res, next) {
   }
 }
 
+function isAdmin(req, res, next) {
+  if (req.session.user && req.session.user.role === 'admin') {
+    return next();
+  } else {
+    res.redirect('/login');
+  }
+}
+
+app.get('/admin', isAdmin, async (req, res) => {
+  const [users] = await db.query('SELECT * FROM users');
+  res.render('admin', { users, user: req.session.user });
+});
+
 app.get('/register', (req, res) => {
   res.render('register');
 });
@@ -62,7 +75,7 @@ app.post('/login', async (req, res) => {
   if (user.length > 0) {
     const isValid = await bcrypt.compare(password, user[0].password);
     if (isValid) {
-      req.session.user = { id: user[0].id, username: user[0].username };
+      req.session.user = { id: user[0].id, username: user[0].username, role: user[0].role };
       return res.redirect('/');
     }
   }
@@ -76,7 +89,7 @@ app.get('/logout', (req, res) => {
 
 app.get('/', isAuthenticated, async (req, res) => {
   const [bots] = await db.query('SELECT * FROM bots WHERE user_id = ?', [req.session.user.id]);
-  res.render('index', { bots, username: req.session.user.username });
+  res.render('index', { bots, user: req.session.user });
 });
 
 app.post('/add-bot', isAuthenticated, async (req, res) => {
@@ -129,6 +142,18 @@ app.post('/delete-bot/:id', isAuthenticated, async (req, res) => {
   await db.query('DELETE FROM bots WHERE id = ? AND user_id = ?', [id, req.session.user.id]);
 
   res.redirect('/');
+});
+app.post('/delete-user/:id', isAdmin, async (req, res) => {
+  const { id } = req.params;
+  const [user] = await db.query('SELECT * FROM users WHERE id = ? ', [id]);
+
+  if (user.length === 0) {
+    return res.status(404).send('Bot não encontrado');
+  }
+
+  await db.query('DELETE FROM users WHERE id = ?', [id]);
+
+  res.redirect('/admin');
 });
 
 async function deactivateAllBots() {
