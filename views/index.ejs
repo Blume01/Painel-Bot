@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Bots</title>
+  <link href="/css/style.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-100">
+
+  <nav class="bg-gray-800 p-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <span class="text-white text-lg font-bold">Bem-vindo(a), <%= username %>!</span>
+      <a href="/logout" class="text-white">Sair</a>
+    </div>
+  </nav>
+
+  <div class="container mx-auto mt-10">
+    <div class="flex justify-end mb-4">
+      <button id="openModalButton"
+        class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        <i class="fas fa-plus"></i>
+      </button>
+    </div>
+
+    <div id="modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+      <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
+        <h2 class="text-2xl font-bold mb-4">Adicionar um Novo Bot</h2>
+        <form action="/add-bot" method="POST">
+          <div class="mb-4">
+            <input type="text" name="token" placeholder="Insira o token do bot"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required>
+          </div>
+          <div class="flex justify-end">
+            <button type="button" id="closeModalButton"
+              class="mr-1 bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+              Fechar
+            </button>
+            <button type="submit"
+              class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+              Adicionar Bot
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <table class="min-w-full bg-white shadow-md rounded-lg align-middle">
+      <thead class="bg-gray-800 text-white">
+        <tr>
+          <th class="px-4 py-2">#</th>
+          <th class="px-4 py-2">Token</th>
+          <th class="px-4 py-2">Status</th>
+          <th class="px-4 py-2">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% bots.forEach(bot=> { %>
+          <tr>
+            <td class="px-4 py-2 font-bold">
+              <div class="flex justify-center">
+                <%= bot.id %>
+              </div>
+            </td>
+            <td class="px-4 py-2">
+              <div class="flex justify-center">
+                <%= bot.token.split(':')[0] %>...
+              </div>
+            </td>
+            <td class="px-4 py-2">
+              <div class="flex justify-center">
+                <form action="/toggle-bot/<%= bot.id %>" method="POST">
+                  <button type="submit"
+                    class="bg-white-500 hover:bg-white-700 text-gray-800 font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline mr-2">
+                    <% if (bot.status === 'active') { %>
+                      <i class="fa fa-toggle-on fa-2x"></i>
+                    <% } else { %>
+                      <i class="fa fa-toggle-off fa-2x"></i>
+                    <% } %>
+                  </button>
+                </form>
+              </div>
+            </td>
+            <td class="px-4 py-2">
+              <div class="flex justify-center">
+                <form action="/delete-bot/<%= bot.id %>" method="POST">
+                  <button type="submit"
+                    class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline mr-1">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const openModalButton = document.getElementById('openModalButton');
+    const closeModalButton = document.getElementById('closeModalButton');
+    const modal = document.getElementById('modal');
+
+    openModalButton.addEventListener('click', () => {
+      modal.classList.remove('hidden');
+    });
+
+    closeModalButton.addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+  </script>
+
+</body>
+
+</html>
