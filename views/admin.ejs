@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerenciador de userss</title>
+  <title>Gerenciador de usuários</title>
   <link href="/css/style.css" rel="stylesheet">
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -21,16 +21,14 @@
 
   <div class="container mx-auto mt-10">
     <div class="flex justify-end mb-4">
-      <% if (user.role == 'admin' ) { %>
-        <a href="/"
-          class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline me-2">
+      <% if (user.role === 'admin') { %>
+        <a href="/" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline me-2">
           <i class="fa fa-robot"></i>
         </a>
-        <% } %>
-          <button id="openModalButton"
-            class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-            <i class="fas fa-plus"></i>
-          </button>
+      <% } %>
+      <button id="openModalButton" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        <i class="fas fa-plus"></i>
+      </button>
     </div>
 
     <table class="min-w-full bg-white shadow-md rounded-lg align-middle">
@@ -43,51 +41,135 @@
         </tr>
       </thead>
       <tbody>
-        <% users.forEach(users=> { %>
+        <% users.forEach(user => { %>
           <tr>
             <td class="px-4 py-2 font-bold">
               <div class="flex justify-center">
-                <%= users.id %>
+                <%= user.id %>
               </div>
             </td>
             <td class="px-4 py-2">
               <div class="flex justify-center">
-                <%= users.username %>
+                <%= user.username %>
               </div>
             </td>
             <td class="px-4 py-2">
               <div class="flex justify-center">
-                <%= users.created_at.toLocaleString('pt-BR', { year: 'numeric' , month: 'numeric' , day: 'numeric' ,
-                  hour: '2-digit' , minute: '2-digit' }) %>
+                <%= user.created_at.toLocaleString('pt-BR', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
               </div>
             </td>
             <td class="px-4 py-2">
               <div class="flex justify-center">
-                <form action="/delete-user/<%= users.id %>" method="POST">
-                  <button type="submit"
-                    class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline mr-1">
+                <form action="/delete-user/<%= user.id %>" method="POST">
+                  <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline mr-1">
                     <i class="fas fa-trash"></i>
                   </button>
                 </form>
+                <button onclick="openEditModal('<%= user.id %>', '<%= user.username %>', '<%= user.role %>')" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline">
+                  <i class="fas fa-edit"></i>
+                </button>
               </div>
             </td>
           </tr>
-          <% }) %>
+        <% }) %>
       </tbody>
     </table>
   </div>
 
-  <script>
-    const openModalButton = document.getElementById('openModalButton');
-    const closeModalButton = document.getElementById('closeModalButton');
-    const modal = document.getElementById('modal');
+  <!-- Modal Adicionar Usuário -->
+  <div id="modalAdd" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
+      <h2 class="text-xl font-bold mb-4">Adicionar Novo Usuário</h2>
+      <form action="/add-user" method="POST">
+        <div class="mb-2 flex space-x-4">
+          <div class="flex-1 me-2">
+            <label for="username" class="block text-gray-700">Nome de Usuário</label>
+            <input type="text" id="username" name="username" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+          </div>
+          <div class="flex-1">
+            <label for="password" class="block text-gray-700">Senha</label>
+            <input type="password" id="password" name="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label for="role" class="block text-gray-700">Cargo</label>
+          <select id="role" name="role" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+            <option value="admin">Administrador</option>
+            <option value="user" selected>Usuário</option>
+          </select>
+        </div>
+        <div class="flex justify-end">
+          <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2">Adicionar</button>
+          <button type="button" id="closeModalAddButton" class="bg-gray-300 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-    openModalButton.addEventListener('click', () => {
-      modal.classList.remove('hidden');
+  <!-- Modal Editar Usuário -->
+  <div id="modalEdit" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
+      <h2 class="text-xl font-bold mb-4">Editar Usuário</h2>
+      <form id="editUserForm" action="" method="POST">
+        <input type="hidden" id="user_id" name="user_id">
+        <div class="mb-2 flex space-x-4">
+          <div class="flex-1 me-2">
+            <label for="editUsername" class="block text-gray-700">Nome de Usuário</label>
+            <input type="text" id="editUsername" name="editUsername" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+          </div>
+          <div class="flex-1">
+            <label for="editPassword" class="block text-gray-700">Senha</label>
+            <input type="password" id="editPassword" name="editPassword" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="(deixe em branco para manter a senha atual)">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label for="editRole" class="block text-gray-700">Cargo</label>
+          <select id="editRole" name="editRole" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+            <option value="admin">Administrador</option>
+            <option value="user">Usuário</option>
+          </select>
+        </div>
+        <div class="flex justify-end">
+          <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2">Salvar</button>
+          <button type="button" id="closeModalEditButton" class="bg-gray-300 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const openModalAddButton = document.getElementById('openModalButton');
+    const closeModalAddButton = document.getElementById('closeModalAddButton');
+    const modalAdd = document.getElementById('modalAdd');
+
+    const openModalEditButton = document.getElementById('openModalEditButton');
+    const closeModalEditButton = document.getElementById('closeModalEditButton');
+    const modalEdit = document.getElementById('modalEdit');
+    const editUserForm = document.getElementById('editUserForm');
+
+    openModalAddButton.addEventListener('click', () => {
+      modalAdd.classList.remove('hidden');
     });
 
-    closeModalButton.addEventListener('click', () => {
-      modal.classList.add('hidden');
+    closeModalAddButton.addEventListener('click', () => {
+      modalAdd.classList.add('hidden');
+    });
+
+    function openEditModal(id, username, role) {
+      // Set the form action URL
+      editUserForm.action = `/edit-user/${id}`;
+
+      // Set the form input values
+      document.getElementById('user_id').value = id;
+      document.getElementById('editUsername').value = username;
+      document.getElementById('editRole').value = role;
+
+      // Show the edit modal
+      modalEdit.classList.remove('hidden');
+    }
+
+    closeModalEditButton.addEventListener('click', () => {
+      modalEdit.classList.add('hidden');
     });
   </script>
 

@@ -43,31 +43,23 @@ function isAdmin(req, res, next) {
   }
 }
 
-app.get('/admin', isAdmin, async (req, res) => {
-  const [users] = await db.query('SELECT * FROM users');
-  res.render('admin', { users, user: req.session.user });
-});
+// app.get('/register', (req, res) => {
+//   res.render('register');
+// });
+// app.post('/register', async (req, res) => {
+//   const { username, password } = req.body;
+//   const hashedPassword = await bcrypt.hash(password, 10);
 
-app.get('/register', (req, res) => {
-  res.render('register');
-});
-
-app.post('/register', async (req, res) => {
-  const { username, password } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  try {
-    await db.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword]);
-    res.redirect('/login');
-  } catch (err) {
-    res.status(400).send('Erro ao criar usuário');
-  }
-});
-
+//   try {
+//     await db.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword]);
+//     res.redirect('/login');
+//   } catch (err) {
+//     res.status(400).send('Erro ao criar usuário');
+//   }
+// });
 app.get('/login', (req, res) => {
   res.render('login');
 });
-
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const [user] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
@@ -81,7 +73,6 @@ app.post('/login', async (req, res) => {
   }
   res.status(400).send('Credenciais inválidas');
 });
-
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
@@ -106,7 +97,6 @@ app.post('/add-bot', isAuthenticated, async (req, res) => {
     res.status(400).send('Erro ao validar o token');
   }
 });
-
 app.post('/toggle-bot/:id', isAuthenticated, async (req, res) => {
   const { id } = req.params;
   const [bot] = await db.query('SELECT * FROM bots WHERE id = ? AND user_id = ?', [id, req.session.user.id]);
@@ -126,7 +116,6 @@ app.post('/toggle-bot/:id', isAuthenticated, async (req, res) => {
 
   res.redirect('/');
 });
-
 app.post('/delete-bot/:id', isAuthenticated, async (req, res) => {
   const { id } = req.params;
   const [bot] = await db.query('SELECT * FROM bots WHERE id = ? AND user_id = ?', [id, req.session.user.id]);
@@ -143,16 +132,87 @@ app.post('/delete-bot/:id', isAuthenticated, async (req, res) => {
 
   res.redirect('/');
 });
+
+
+app.get('/admin', isAdmin, async (req, res) => {
+  const [users] = await db.query('SELECT * FROM users');
+  res.render('admin', { users, user: req.session.user });
+});
+app.post('/add-user', isAdmin, async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+
+    if (!username || !password || !role) {
+      return res.status(400).send('Please provide all required fields');
+    }
+
+    // Verifica se o nome de usuário já está em uso
+    const [existingUsers] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+    if (existingUsers.length > 0) {
+      return res.status(400).send('User with this username already exists');
+    }
+
+    // Cria um hash da senha
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insere o novo usuário no banco de dados
+    await db.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hashedPassword, role]);
+
+    res.status(201).send('User created successfully').redirect('/admin');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error creating user');
+  }
+});
+
+
+// Editar Usuário
+app.post('/edit-user/:id', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { editUsername, editPassword, editRole } = req.body;
+
+    if (!editUsername || !editRole) {
+      return res.status(400).send('Please provide all required fields');
+    }
+
+    // Verifica se o username já está em uso por outro usuário
+    const existingUser = await db.query('SELECT * FROM users WHERE username = ? AND id != ?', [editUsername, id]);
+    if (existingUser.length > 0) {
+      return res.status(400).send('User with this username already exists');
+    }
+
+    let updateQuery = 'UPDATE users SET username = ?, role = ?';
+    const queryParams = [editUsername, editRole];
+
+    if (editPassword) {
+      const hashedPassword = await bcrypt.hash(editPassword, 10);
+      updateQuery += ', password = ?';
+      queryParams.push(hashedPassword);
+    }
+
+    updateQuery += ' WHERE id = ?';
+    queryParams.push(id);
+
+    await db.query(updateQuery, queryParams);
+
+    res.status(200).send('User updated successfully');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error updating user');
+  }
+});
+
 app.post('/delete-user/:id', isAdmin, async (req, res) => {
   const { id } = req.params;
   const [user] = await db.query('SELECT * FROM users WHERE id = ? ', [id]);
 
   if (user.length === 0) {
-    return res.status(404).send('Bot não encontrado');
+    return res.status(404).send('Usuário não encontrado');
   }
 
   await db.query('DELETE FROM users WHERE id = ?', [id]);
-
+  await db.query('DELETE FROM bots WHERE user_id = ?', [id]);
   res.redirect('/admin');
 });
 
