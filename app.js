@@ -5,24 +5,21 @@ const bcrypt = require('bcrypt');
 const session = require('express-session');
 const axios = require('axios');
 const path = require('path');
-const botService = require('./botService'); // Importa o serviço de bot
+const botService = require('./botService');
 const app = express();
 
-// Configurações
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Configurações de sessão
 app.use(session({
-  secret: 'secret_key', // Colocar chave secreta real
+  secret: 'secret_key',
   resave: false,
   saveUninitialized: false
 }));
 
-// Conexão com o banco de dados MySQL
 const db = mysql.createPool({
   host: 'localhost',
   user: 'root',
@@ -30,7 +27,6 @@ const db = mysql.createPool({
   database: 'bot_manager'
 });
 
-// Middleware de autenticação
 function isAuthenticated(req, res, next) {
   if (req.session.user) {
     return next();
@@ -39,7 +35,6 @@ function isAuthenticated(req, res, next) {
   }
 }
 
-// Rota de registro
 app.get('/register', (req, res) => {
   res.render('register');
 });
@@ -56,7 +51,6 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// Rota de login
 app.get('/login', (req, res) => {
   res.render('login');
 });
@@ -75,19 +69,16 @@ app.post('/login', async (req, res) => {
   res.status(400).send('Credenciais inválidas');
 });
 
-// Rota para logout
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
 });
 
-// Rota principal protegida
 app.get('/', isAuthenticated, async (req, res) => {
   const [bots] = await db.query('SELECT * FROM bots WHERE user_id = ?', [req.session.user.id]);
   res.render('index', { bots, username: req.session.user.username });
 });
 
-// Rota para adicionar um novo bot
 app.post('/add-bot', isAuthenticated, async (req, res) => {
   const { token } = req.body;
   try {
@@ -103,7 +94,6 @@ app.post('/add-bot', isAuthenticated, async (req, res) => {
   }
 });
 
-// Rota para ativar/desativar um bot
 app.post('/toggle-bot/:id', isAuthenticated, async (req, res) => {
   const { id } = req.params;
   const [bot] = await db.query('SELECT * FROM bots WHERE id = ? AND user_id = ?', [id, req.session.user.id]);
@@ -116,9 +106,9 @@ app.post('/toggle-bot/:id', isAuthenticated, async (req, res) => {
   await db.query('UPDATE bots SET status = ? WHERE id = ?', [newStatus, id]);
 
   if (newStatus === 'active') {
-    botService.startBot(bot[0].token); // Ativa o bot
+    botService.startBot(bot[0].token);
   } else {
-    botService.stopBot(bot[0].token); // Desativa o bot
+    botService.stopBot(bot[0].token);
   }
 
   res.redirect('/');
@@ -132,12 +122,10 @@ app.post('/delete-bot/:id', isAuthenticated, async (req, res) => {
     return res.status(404).send('Bot não encontrado');
   }
 
-  // Se o bot estiver ativo, pare o bot antes de deletar
   if (bot[0].status === 'active') {
     botService.stopBot(bot[0].token);
   }
 
-  // Deleta o bot do banco de dados
   await db.query('DELETE FROM bots WHERE id = ? AND user_id = ?', [id, req.session.user.id]);
 
   res.redirect('/');
@@ -152,7 +140,6 @@ async function deactivateAllBots() {
   }
 }
 
-// Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   deactivateAllBots();
