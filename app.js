@@ -78,10 +78,12 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
+
 app.get('/', isAuthenticated, async (req, res) => {
   const [bots] = await db.query('SELECT * FROM bots WHERE user_id = ?', [req.session.user.id]);
   res.render('index', { bots, user: req.session.user });
 });
+
 
 app.post('/add-bot', isAuthenticated, async (req, res) => {
   const { token } = req.body;
@@ -146,16 +148,13 @@ app.post('/add-user', isAdmin, async (req, res) => {
       return res.status(400).send('Please provide all required fields');
     }
 
-    // Verifica se o nome de usuário já está em uso
     const [existingUsers] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
     if (existingUsers.length > 0) {
       return res.status(400).send('User with this username already exists');
     }
 
-    // Cria um hash da senha
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insere o novo usuário no banco de dados
     await db.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hashedPassword, role]);
 
     res.status(201).send('User created successfully').redirect('/admin');
@@ -164,9 +163,6 @@ app.post('/add-user', isAdmin, async (req, res) => {
     res.status(500).send('Error creating user');
   }
 });
-
-
-// Editar Usuário
 app.post('/edit-user/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -176,7 +172,6 @@ app.post('/edit-user/:id', isAdmin, async (req, res) => {
       return res.status(400).send('Please provide all required fields');
     }
 
-    // Verifica se o username já está em uso por outro usuário
     const existingUser = await db.query('SELECT * FROM users WHERE username = ? AND id != ?', [editUsername, id]);
     if (existingUser.length > 0) {
       return res.status(400).send('User with this username already exists');
@@ -202,7 +197,6 @@ app.post('/edit-user/:id', isAdmin, async (req, res) => {
     res.status(500).send('Error updating user');
   }
 });
-
 app.post('/delete-user/:id', isAdmin, async (req, res) => {
   const { id } = req.params;
   const [user] = await db.query('SELECT * FROM users WHERE id = ? ', [id]);

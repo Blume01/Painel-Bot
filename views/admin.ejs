@@ -76,7 +76,6 @@
     </table>
   </div>
 
-  <!-- Modal Adicionar Usuário -->
   <div id="modalAdd" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
     <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
       <h2 class="text-xl font-bold mb-4">Adicionar Novo Usuário</h2>
@@ -106,7 +105,6 @@
     </div>
   </div>
 
-  <!-- Modal Editar Usuário -->
   <div id="modalEdit" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
     <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
       <h2 class="text-xl font-bold mb-4">Editar Usuário</h2>
@@ -156,15 +154,12 @@
     });
 
     function openEditModal(id, username, role) {
-      // Set the form action URL
       editUserForm.action = `/edit-user/${id}`;
 
-      // Set the form input values
       document.getElementById('user_id').value = id;
       document.getElementById('editUsername').value = username;
       document.getElementById('editRole').value = role;
 
-      // Show the edit modal
       modalEdit.classList.remove('hidden');
     }
 
