@@ -5,9 +5,7 @@ Um painel de controle para gerenciar bots do telegram.
 ## Recursos
 
 - Interface amigável para gerenciar bots.
-- Integração com APIs externas.
-- Painel de administração para configuração e monitoramento.
-- Módulos personalizáveis e extensíveis.
+- Painel de administração para configuração.
 
 ## Instalação
 
