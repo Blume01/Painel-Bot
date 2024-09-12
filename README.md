@@ -1,6 +1,6 @@
 # Painel-Bot
 
-Um painel de controle para gerenciar tarefas e automações de bots, integrado com várias APIs.
+Um painel de controle para gerenciar bots do telegram.
 
 ## Recursos
 
@@ -32,9 +32,9 @@ Um painel de controle para gerenciar tarefas e automações de bots, integrado c
 
 3. Inicie a aplicação:
 
-  ```bash
-  npm start
-  ```
+   ```bash
+   npm start
+   ```
 
 ### Uso
 
