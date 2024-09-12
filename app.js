@@ -34,7 +34,6 @@ function isAuthenticated(req, res, next) {
     res.redirect('/login');
   }
 }
-
 function isAdmin(req, res, next) {
   if (req.session.user && req.session.user.role === 'admin') {
     return next();
@@ -42,24 +41,42 @@ function isAdmin(req, res, next) {
     res.redirect('/login');
   }
 }
+async function deactivateAllBots() {
+  try {
+    await db.query('UPDATE bots SET status = "inactive"');
+    console.log('All bots were disabled when starting the server.');
+  } catch (error) {
+    console.error('Error disabling bots at start:', error);
+  }
+}
 
-// app.get('/register', (req, res) => {
-//   res.render('register');
-// });
-// app.post('/register', async (req, res) => {
-//   const { username, password } = req.body;
-//   const hashedPassword = await bcrypt.hash(password, 10);
-
-//   try {
-//     await db.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword]);
-//     res.redirect('/login');
-//   } catch (err) {
-//     res.status(400).send('Erro ao criar usuário');
-//   }
-// });
 app.get('/login', (req, res) => {
   res.render('login');
 });
+app.get('/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/login');
+});
+app.get('/', isAuthenticated, async (req, res) => {
+  const [bots] = await db.query('SELECT * FROM bots WHERE user_id = ?', [req.session.user.id]);
+  res.render('index', { bots, user: req.session.user });
+});
+
+
+app.get('/get-bots', isAuthenticated, async (req, res) => {
+  const [bots] = await db.query('SELECT * FROM bots WHERE user_id = ?', [req.session.user.id]);
+  return res.json(bots);
+});
+app.get('/admin', isAdmin, async (req, res) => {
+  const [users] = await db.query('SELECT * FROM users');
+  res.render('admin', { users, user: req.session.user });
+});
+app.get('/get-users', isAdmin, async (req, res) => {
+  const [users] = await db.query('SELECT * FROM users');
+  return res.json(users);
+});
+
+
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const [user] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
@@ -71,32 +88,48 @@ app.post('/login', async (req, res) => {
       return res.redirect('/');
     }
   }
-  res.status(400).send('Credenciais inválidas');
+  res.status(400).json({ message: 'Invalid credentials' });
 });
-app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/login');
-});
-
-
-app.get('/', isAuthenticated, async (req, res) => {
-  const [bots] = await db.query('SELECT * FROM bots WHERE user_id = ?', [req.session.user.id]);
-  res.render('index', { bots, user: req.session.user });
-});
-
-
 app.post('/add-bot', isAuthenticated, async (req, res) => {
-  const { token } = req.body;
+  const { name, token } = req.body;
   try {
     const response = await axios.get(`https://api.telegram.org/bot${token}/getMe`);
     if (response.data.ok) {
-      await db.query('INSERT INTO bots (token, status, user_id) VALUES (?, "inactive", ?)', [token, req.session.user.id]);
-      res.redirect('/');
+      await db.query('INSERT INTO bots (name, username, token, status, user_id) VALUES (?, ?, ?, "inactive", ?)', [name, response.data.result.username, token, req.session.user.id]);
+      res.status(200).json({ message: 'Bot added successfully' });
     } else {
-      res.status(400).send('Token inválido');
+      res.status(400).json({ message: 'Invalid token' });
     }
   } catch (err) {
-    res.status(400).send('Erro ao validar o token');
+    res.status(400).json({ message: err.message });
+  }
+});
+app.post('/edit-bot/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { editName, editToken } = req.body;
+
+    if (!editName || !editToken) {
+      return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
+    const [existingBot] = await db.query('SELECT * FROM bots WHERE name = ? AND id != ?', [editName, id]);
+    if (existingBot.length > 0) {
+      return res.status(400).json({ message: 'User with this username already exists' });
+    }
+
+    let updateQuery = 'UPDATE bots SET name = ?, token = ?';
+    const queryParams = [editName, editToken];
+
+    updateQuery += ' WHERE id = ?';
+    queryParams.push(id);
+
+    await db.query(updateQuery, queryParams);
+
+    res.status(200).json({ message: 'Bot updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating bot' });
   }
 });
 app.post('/toggle-bot/:id', isAuthenticated, async (req, res) => {
@@ -104,7 +137,7 @@ app.post('/toggle-bot/:id', isAuthenticated, async (req, res) => {
   const [bot] = await db.query('SELECT * FROM bots WHERE id = ? AND user_id = ?', [id, req.session.user.id]);
 
   if (bot.length === 0) {
-    return res.status(404).send('Bot não encontrado');
+    return res.status(404).json({ message: 'Bot not found' });
   }
 
   const newStatus = bot[0].status === 'active' ? 'inactive' : 'active';
@@ -123,7 +156,7 @@ app.post('/delete-bot/:id', isAuthenticated, async (req, res) => {
   const [bot] = await db.query('SELECT * FROM bots WHERE id = ? AND user_id = ?', [id, req.session.user.id]);
 
   if (bot.length === 0) {
-    return res.status(404).send('Bot não encontrado');
+    return res.status(404).json({ message: 'Bot not found' });
   }
 
   if (bot[0].status === 'active') {
@@ -132,35 +165,28 @@ app.post('/delete-bot/:id', isAuthenticated, async (req, res) => {
 
   await db.query('DELETE FROM bots WHERE id = ? AND user_id = ?', [id, req.session.user.id]);
 
-  res.redirect('/');
-});
-
-
-app.get('/admin', isAdmin, async (req, res) => {
-  const [users] = await db.query('SELECT * FROM users');
-  res.render('admin', { users, user: req.session.user });
+  res.status(200).json({ message: 'Bot deleted successfully' });
 });
 app.post('/add-user', isAdmin, async (req, res) => {
   try {
     const { username, password, role } = req.body;
 
     if (!username || !password || !role) {
-      return res.status(400).send('Please provide all required fields');
+      return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
     const [existingUsers] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
     if (existingUsers.length > 0) {
-      return res.status(400).send('User with this username already exists');
+      return res.status(400).json({ message: 'User with this username already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await db.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hashedPassword, role]);
 
-    res.status(201).send('User created successfully').redirect('/admin');
+    res.status(200).json({ message: 'User created successfully' });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Error creating user');
+    res.status(500).json({ message: 'Error creating user' });
   }
 });
 app.post('/edit-user/:id', isAdmin, async (req, res) => {
@@ -169,12 +195,12 @@ app.post('/edit-user/:id', isAdmin, async (req, res) => {
     const { editUsername, editPassword, editRole } = req.body;
 
     if (!editUsername || !editRole) {
-      return res.status(400).send('Please provide all required fields');
+      return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
-    const existingUser = await db.query('SELECT * FROM users WHERE username = ? AND id != ?', [editUsername, id]);
+    const [existingUser] = await db.query('SELECT * FROM users WHERE username = ? AND id != ?', [editUsername, id]);
     if (existingUser.length > 0) {
-      return res.status(400).send('User with this username already exists');
+      return res.status(400).json({ message: 'User with this username already exists' });
     }
 
     let updateQuery = 'UPDATE users SET username = ?, role = ?';
@@ -191,36 +217,37 @@ app.post('/edit-user/:id', isAdmin, async (req, res) => {
 
     await db.query(updateQuery, queryParams);
 
-    res.status(200).send('User updated successfully');
+    res.status(200).json({ message: 'User updated successfully' });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error updating user');
+    res.status(500).json({ message: 'Error updating user' });
   }
 });
 app.post('/delete-user/:id', isAdmin, async (req, res) => {
-  const { id } = req.params;
-  const [user] = await db.query('SELECT * FROM users WHERE id = ? ', [id]);
+  try {
+    const { id } = req.params;
+    const [user] = await db.query('SELECT * FROM users WHERE id = ? ', [id]);
 
-  if (user.length === 0) {
-    return res.status(404).send('Usuário não encontrado');
+    if (user.length === 0) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    await db.query('DELETE FROM bots WHERE user_id = ?', [id]);
+    await db.query('DELETE FROM users WHERE id = ?', [id]);
+
+    res.status(200).json({ message: 'User and associated bots deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error deleting user' });
   }
-
-  await db.query('DELETE FROM users WHERE id = ?', [id]);
-  await db.query('DELETE FROM bots WHERE user_id = ?', [id]);
-  res.redirect('/admin');
 });
 
-async function deactivateAllBots() {
-  try {
-    await db.query('UPDATE bots SET status = "inactive"');
-    console.log('Todos os bots foram desativados ao iniciar o servidor.');
-  } catch (error) {
-    console.error('Erro ao desativar os bots no início:', error);
-  }
-}
+app.all('*', (req, res) => {
+  res.status(404).render('404');
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   deactivateAllBots();
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Server running on the port http://localhost:${PORT}`);
 });

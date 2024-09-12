@@ -4,125 +4,138 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerenciador de Bots</title>
+  <title>Bot Manager</title>
   <link href="/css/style.css" rel="stylesheet">
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 
 <body class="bg-gray-200">
 
-  <nav class="bg-gray-800 p-4">
-    <div class="container mx-auto flex justify-between items-center">
-      <span class="text-white text-lg font-bold">Bem-vindo(a), <%= user.username %>!</span>
-      <a href="/logout" class="text-white"><i class="fas fa-sign-in-alt"></i></a>
-    </div>
-  </nav>
-
-  <div class="container mx-auto mt-10">
-    <div class="flex justify-end mb-4">
-      <% if (user.role == 'admin' ) { %>
-        <a href="/admin"
-          class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline me-2">
-          <i class="fa fa-users"></i>
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <aside class="bg-gray-800 text-white w-64 flex flex-col">
+      <div class="p-4 font-bold text-xl">
+        Welcome, <%= user.username %>!
+      </div>
+      <nav class="flex-1">
+        <ul class="space-y-4 p-4">
+          <% if (user.role==='admin' ) { %>
+            <li>
+              <a href="/admin" class="flex items-center space-x-2 hover:text-gray-300">
+                <i class="fa fa-users me-1"></i>
+                <span>User Manager</span>
+              </a>
+            </li>
+            <% } %>
+              <li>
+                <a href="/" class="flex items-center space-x-2 hover:text-gray-300">
+                  <i class="fa fa-robot me-1"></i>
+                  <span>Bots</span>
+                </a>
+              </li>
+        </ul>
+      </nav>
+      <div class="p-4">
+        <a href="/logout" class="text-white">
+          <i class="fas fa-sign-in-alt"></i> Exit
         </a>
-        <% } %>
+      </div>
+    </aside>
 
-          <button id="openModalButton"
-            class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-            <i class="fas fa-plus"></i>
-          </button>
-    </div>
+    <!-- Main Content -->
+    <div class="flex-1 p-10">
+      <div class="flex justify-between mb-4">
+        <h1 class="text-2xl text-gray-800 font-bold">Bots</h1>
+        <button onclick="openModal('modalAdd')"
+          class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
 
-    <div id="modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
-      <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
-        <h2 class="text-2xl font-bold mb-4">Adicionar um Novo Bot</h2>
-        <form action="/add-bot" method="POST">
-          <div class="mb-4">
-            <input type="text" name="token" placeholder="Insira o token do bot"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              required>
-          </div>
-          <div class="flex justify-end">
-            <button type="button" id="closeModalButton"
-              class="mr-1 bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-              Cancelar
-            </button>
-            <button type="submit"
-              class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-              Adicionar
-            </button>
-          </div>
-        </form>
+      <div class="bg-white shadow-md rounded-lg">
+        <table class="min-w-full bg-white shadow-md rounded-lg align-middle">
+          <thead class="bg-gray-800 text-white">
+            <tr>
+              <th class="px-4 py-2">#</th>
+              <th class="px-4 py-2">Name</th>
+              <th class="px-4 py-2">User Bot</th>
+              <th class="px-4 py-2">Token</th>
+              <th class="px-4 py-2">Creation Date</th>
+              <th class="px-4 py-2">Status</th>
+              <th class="px-4 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Dynamic rows will be inserted here -->
+          </tbody>
+        </table>
       </div>
     </div>
-
-    <table class="min-w-full bg-white shadow-md rounded-lg align-middle">
-      <thead class="bg-gray-800 text-white">
-        <tr>
-          <th class="px-4 py-2">#</th>
-          <th class="px-4 py-2">Token</th>
-          <th class="px-4 py-2">Status</th>
-          <th class="px-4 py-2">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% bots.forEach(bot=> { %>
-          <tr>
-            <td class="px-4 py-2 font-bold">
-              <div class="flex justify-center">
-                <%= bot.id %>
-              </div>
-            </td>
-            <td class="px-4 py-2">
-              <div class="flex justify-center">
-                <%= bot.token.split(':')[0] %>...
-              </div>
-            </td>
-            <td class="px-4 py-2">
-              <div class="flex justify-center">
-                <form action="/toggle-bot/<%= bot.id %>" method="POST">
-                  <button type="submit"
-                    class="bg-white-500 hover:bg-white-700 text-gray-800 font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline mr-2">
-                    <% if (bot.status==='active' ) { %>
-                      <i class="fa fa-toggle-on fa-2x"></i>
-                      <% } else { %>
-                        <i class="fa fa-toggle-off fa-2x"></i>
-                        <% } %>
-                  </button>
-                </form>
-              </div>
-            </td>
-            <td class="px-4 py-2">
-              <div class="flex justify-center">
-                <form action="/delete-bot/<%= bot.id %>" method="POST">
-                  <button type="submit"
-                    class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline mr-1">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </form>
-              </div>
-            </td>
-          </tr>
-          <% }) %>
-      </tbody>
-    </table>
   </div>
 
-  <script>
-    const openModalButton = document.getElementById('openModalButton');
-    const closeModalButton = document.getElementById('closeModalButton');
-    const modal = document.getElementById('modal');
+  <div id="modalAdd" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
+      <h2 class="text-2xl font-bold mb-4">Add a New Bot</h2>
+      <form id="addBotForm">
+        <div class="mb-4">
+          <input type="text" name="name" id="name" placeholder="Enter the bot name"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            required>
+        </div>
+        <div class="mb-4">
+          <input type="text" name="token" id="token" placeholder="Enter bot token"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            required>
+        </div>
+        <div class="flex justify-end">
+          <button type="button" onclick="closeModal('modalAdd')"
+            class="mr-1 bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Cancel
+          </button>
+          <button type="submit"
+            class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Add bot
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-    openModalButton.addEventListener('click', () => {
-      modal.classList.remove('hidden');
-    });
+  <div id="modalEdit" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
+      <h2 class="text-2xl font-bold mb-4">Edit Bot</h2>
+      <form id="editBotForm">
+        <input type="hidden" name="bot_id" id="bot_id">
+        <div class="mb-4">
+          <input type="text" name="editName" id="editName" placeholder="Enter the bot name"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            required>
+        </div>
+        <div class="mb-4">
+          <input type="text" name="editToken" id="editToken" placeholder="Enter bot token"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            required>
+        </div>
+        <div class="flex justify-end">
+          <button type="button" onclick="closeModal('modalEdit')"
+            class="mr-1 bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Cancel
+          </button>
+          <button type="submit"
+            class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-    closeModalButton.addEventListener('click', () => {
-      modal.classList.add('hidden');
-    });
-  </script>
-
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <script src="/js/scripts.js"></script>
+  <script src="/js/user.js"></script>
 </body>
 
 </html>
